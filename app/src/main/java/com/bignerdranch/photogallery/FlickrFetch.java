@@ -59,7 +59,17 @@ public class FlickrFetch {
         return new String(getUrlBytes(urlSpec));
     }
 
-    public List<GalleryItem> fetchItems(int page){
+    public List<GalleryItem> fetchRecentPhotos(int pageFetched){
+        String url = buildUrl(FETCH_RECENT_METHOD, null);
+        return downloadGalleryItems(url);
+    }
+
+    public List<GalleryItem> searchPhotos(String query, int pageFetched){
+        String url = buildUrl(SEARCH_METHOD, query);
+        return downloadGalleryItems(url);
+    }
+
+    public List<GalleryItem> downloadGalleryItems(String url){ //int is redunant
 
         List<GalleryItem> items = new ArrayList<>();
 
@@ -88,6 +98,15 @@ public class FlickrFetch {
             Log.e(TAG, "Failed to parse JSON", je);
         }
         return items;
+    }
+
+    private String buildUrl (String method, String query){
+     Uri.Builder uriBuilder = ENDPOINT.buildUpon()
+             .appendQueryParameter("method", method);
+     if (method.equals(SEARCH_METHOD)){
+         uriBuilder.appendQueryParameter("text", query);
+     }
+     return uriBuilder.build().toString();
     }
 
     private void parseItems(List<GalleryItem> items, JSONObject jsonBody, String url)
