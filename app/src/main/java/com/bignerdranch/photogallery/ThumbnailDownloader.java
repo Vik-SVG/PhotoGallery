@@ -6,6 +6,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.util.Log;
+import android.util.LruCache;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,6 +22,8 @@ public class ThumbnailDownloader<T> extends HandlerThread {
     private Handler mResponseHandler;
     private ThumbnailDownloadListener<T> mThumbnailDownloadListener;
 
+    public LruCache<String,Bitmap> mPhotoCache;
+
     public interface ThumbnailDownloadListener<T> {
         void onThumbnailDownloaded(T target, Bitmap thumbnail);
     }
@@ -32,6 +35,8 @@ public class ThumbnailDownloader<T> extends HandlerThread {
     public ThumbnailDownloader(Handler responseHandler){
         super(TAG);
         mResponseHandler = responseHandler;
+
+        mPhotoCache = new LruCache<>(76); //added
     }
 
     @Override
@@ -47,7 +52,6 @@ public class ThumbnailDownloader<T> extends HandlerThread {
             }
         };
     }
-
 
     @Override
     public boolean quit(){
@@ -71,6 +75,10 @@ public class ThumbnailDownloader<T> extends HandlerThread {
         mRequestMap.clear();
     }
 
+    public void clearCache(){ //added
+        mPhotoCache.evictAll();
+    }
+
     private void handleRequest(final T target){
         try{
             final String url = mRequestMap.get(target);
@@ -81,7 +89,10 @@ public class ThumbnailDownloader<T> extends HandlerThread {
 
             byte[] bitmapBytes = new FlickrFetch().getUrlBytes(url);
             final Bitmap bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0,bitmapBytes.length);
-            Log.i(TAG, "Bitmap created");
+
+            mPhotoCache.put(url, bitmap); //added
+
+            Log.i(TAG, "Bitmap of size "+ bitmapBytes.length/1024+"KB created");
 
             mResponseHandler.post(new Runnable() {
                 @Override

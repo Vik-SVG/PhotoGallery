@@ -36,7 +36,8 @@ public class PhotoGalleryFragment extends Fragment{
     int     mCurrentPage    = 1;
     int     mMaxPage        = 1;
     int     mItemsPerPage   = 1;
-    private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
+    int     mFirstItemPosition, mLastItemPosition;
+    private ThumbnailDownloader<Integer> mThumbnailDownloader;
 
    /* private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>>{
 
@@ -67,11 +68,12 @@ public class PhotoGalleryFragment extends Fragment{
         Handler responseHandler = new Handler();
         mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
         mThumbnailDownloader.setThumbnailDownloadListener(
-                new ThumbnailDownloader.ThumbnailDownloadListener<PhotoHolder>() {
+                new ThumbnailDownloader.ThumbnailDownloadListener<Integer>() { //chanched to Integer
                     @Override
-                    public void onThumbnailDownloaded(PhotoHolder photoHolder, Bitmap bitmap) {
-                        Drawable drawable = new BitmapDrawable(getResources(), bitmap);
-                        photoHolder.bindDrawable(drawable);
+                    public void onThumbnailDownloaded(Integer position, Bitmap bitmap) {
+                       // Drawable drawable = new BitmapDrawable(getResources(), bitmap);
+                      //  photoHolder.bindDrawable(drawable);
+                        mPhotoRecyclerView.getAdapter().notifyItemChanged(position);
 
                     }
                 }
@@ -107,6 +109,24 @@ public class PhotoGalleryFragment extends Fragment{
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 int lastVisibleItem = mGridManager.findLastVisibleItemPosition();
                 int firstVisibleItem = mGridManager.findFirstVisibleItemPosition();
+
+                if (mLastItemPosition != lastVisibleItem || mFirstItemPosition != firstVisibleItem) {
+                    Log.d(TAG,"Showing item " + firstVisibleItem +" to " + lastVisibleItem);
+                    updatePageText(firstVisibleItem);
+                    mLastItemPosition  = lastVisibleItem;
+                    mFirstItemPosition = firstVisibleItem;
+                    int begin = Math.max(firstVisibleItem-10,0              );
+                    int end   = Math.min(lastVisibleItem +10,mItems.size()-1);
+                    for (int position = begin; position <= end; position++){
+                        String url=mItems.get(position).getUrl();
+                        if(mThumbnailDownloader.mPhotoCache.get(url)== null) {
+                            Log.d(TAG,"Requesting Download at position: "+ position);
+                            mThumbnailDownloader.queueThumbnail(position,url);
+                        }
+
+                    }
+                }
+
                 Log.d(TAG, "Scrolling, First Item: "+ firstVisibleItem + " Last item: " + lastVisibleItem);
 
                 if(!(asyncFetching) && (dy>0)&&(mCurrentPage<mMaxPage)&& (lastVisibleItem>=(mItems.size()-1))){
@@ -126,6 +146,7 @@ public class PhotoGalleryFragment extends Fragment{
     public void onDestroyView(){
         super.onDestroyView();
         mThumbnailDownloader.clearQueue();
+        mThumbnailDownloader.clearCache();
     }
 
 
@@ -180,10 +201,22 @@ return new PhotoHolder(view);
 
         @Override
         public void onBindViewHolder(@NonNull PhotoHolder photoHolder, int position) {
+            Log.d(TAG,"Binding item "+ position + " to " + photoHolder.hashCode());
             GalleryItem galleryItem = mGalleryItems.get(position);
-            Drawable placeholder = getResources().getDrawable(R.drawable.ic_launcher_background);
-            photoHolder.bindDrawable(placeholder);
-            mThumbnailDownloader.queueThumbnail(photoHolder, galleryItem.getUrl());
+            String url              = galleryItem.getUrl();
+            Bitmap bitmap           = mThumbnailDownloader.mPhotoCache.get(url);
+            if(bitmap == null) {
+                Drawable placeholder = getResources().getDrawable(R.drawable.ic_launcher_background);
+                photoHolder.bindDrawable(placeholder);
+            }else {
+                Drawable drawable = new BitmapDrawable(getResources(), bitmap);
+                photoHolder.bindDrawable(drawable);
+            }
+
+           // GalleryItem galleryItem = mGalleryItems.get(position);
+           // Drawable placeholder = getResources().getDrawable(R.drawable.ic_launcher_background);
+           // photoHolder.bindDrawable(placeholder);
+           // mThumbnailDownloader.queueThumbnail(photoHolder, galleryItem.getUrl());
         }
 
         @Override
