@@ -299,7 +299,7 @@ return new PhotoHolder(view);
                 return new FlickrFetch().searchPhotos(mQuery, pageFetched+1);
             }
 
-           //return new FlickrFetch().downloadGalleryItems(pageFetched+1);
+            //return new FlickrFetch().downloadGalleryItems(pageFetched+1);
         }
 
         @Override
