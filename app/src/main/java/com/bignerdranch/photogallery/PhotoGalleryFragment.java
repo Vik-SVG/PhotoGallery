@@ -1,6 +1,7 @@
 package com.bignerdranch.photogallery;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -17,6 +18,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.SearchView;
 import android.widget.TextView;
 
@@ -42,6 +44,7 @@ public class PhotoGalleryFragment extends Fragment{
     int     mItemsPerPage   = 1;
     int     mFirstItemPosition, mLastItemPosition;
     private ThumbnailDownloader<Integer> mThumbnailDownloader;
+    ProgressBar mProgressBar;
 
    /* private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>>{
 
@@ -69,6 +72,9 @@ public class PhotoGalleryFragment extends Fragment{
         setHasOptionsMenu(true);
         updateItems();
 
+       /* Intent i = PollService.newIntent(getActivity());
+        getActivity().startService(i);*/
+
         Handler responseHandler = new Handler();
         mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
         mThumbnailDownloader.setThumbnailDownloadListener(
@@ -92,6 +98,9 @@ public class PhotoGalleryFragment extends Fragment{
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState){
         View v = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
         mCurrentPageText = (TextView) v.findViewById(R.id.currentPageText);
+
+        mProgressBar = v.findViewById(R.id.progres_bar);
+       // showProgressBar();
 
         mPhotoRecyclerView = (RecyclerView) v.findViewById(R.id.photo_recycler_view);
         mPhotoRecyclerView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
@@ -124,7 +133,7 @@ public class PhotoGalleryFragment extends Fragment{
                     int end   = Math.min(lastVisibleItem +10,mItems.size()-1);
                     for (int position = begin; position <= end; position++){
                         String url=mItems.get(position).getUrl();
-                        if(mThumbnailDownloader.mPhotoCache.get(url)== null) {
+                       if(mThumbnailDownloader.mPhotoCache.get(url)== null) {
                             Log.d(TAG,"Requesting Download at position: "+ position);
                             mThumbnailDownloader.queueThumbnail(position,url);
                         }
@@ -155,6 +164,13 @@ public class PhotoGalleryFragment extends Fragment{
         mThumbnailDownloader.clearCache();
     }
 
+    private void showProgressBar() {
+        mProgressBar.setVisibility(View.VISIBLE);
+    }
+
+    private void hideProgressBar() {
+        mProgressBar.setVisibility(View.GONE);
+    }
 
     @Override
     public void onDestroy(){
@@ -177,7 +193,7 @@ public class PhotoGalleryFragment extends Fragment{
                 Log.d(TAG, "QueryTextSubmit: " + s);
                 QueryPreferences.setStoredQuery(getActivity(), s);
                 updateItems();
-
+                searchView.onActionViewCollapsed();
                 return true;
             }
 
@@ -186,6 +202,8 @@ public class PhotoGalleryFragment extends Fragment{
                 Log.d(TAG, "QueryTextChange: " +s);
                 return false;
             }
+
+
         });
 
         searchView.setOnSearchClickListener(new View.OnClickListener() {
@@ -195,6 +213,13 @@ public class PhotoGalleryFragment extends Fragment{
                 searchView.setQuery(query, false);
             }
         });
+
+        MenuItem toggleItem = menu.findItem(R.id.menu_item_toggle_polling);
+        if(PollService.isServiceAlarmOn(getActivity())){
+            toggleItem.setTitle(R.string.stop_poling);
+        } else {
+            toggleItem.setTitle(R.string.start_polling);
+        }
     }
 
     @Override
@@ -203,6 +228,11 @@ public class PhotoGalleryFragment extends Fragment{
             case R.id.menu_item_clear:
                 QueryPreferences.setStoredQuery(getActivity(), null);
                 updateItems();
+                return true;
+            case R.id.menu_item_toggle_polling:
+                boolean shouldStartAlarm = !PollService.isServiceAlarmOn(getActivity());
+                PollService.setServiceAlarm(getActivity(), shouldStartAlarm);
+                getActivity().invalidateOptionsMenu();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -260,12 +290,15 @@ return new PhotoHolder(view);
         public void onBindViewHolder(@NonNull PhotoHolder photoHolder, int position) {
             Log.d(TAG,"Binding item "+ position + " to " + photoHolder.hashCode());
             GalleryItem galleryItem = mGalleryItems.get(position);
-            String url              = galleryItem.getUrl();
-            Bitmap bitmap           = mThumbnailDownloader.mPhotoCache.get(url);
-            if(bitmap == null) {
+            String url = galleryItem.getUrl();
+            Bitmap bitmap = mThumbnailDownloader.mPhotoCache.get(url);
+           if(bitmap == null) {
+            showProgressBar();
                 Drawable placeholder = getResources().getDrawable(R.drawable.ic_launcher_background);
                 photoHolder.bindDrawable(placeholder);
+                mThumbnailDownloader.queueThumbnail(position,url);
             }else {
+                hideProgressBar();
                 Drawable drawable = new BitmapDrawable(getResources(), bitmap);
                 photoHolder.bindDrawable(drawable);
             }
@@ -299,20 +332,27 @@ return new PhotoHolder(view);
                 return new FlickrFetch().searchPhotos(mQuery, pageFetched+1);
             }
 
-            //return new FlickrFetch().downloadGalleryItems(pageFetched+1);
+           // return new FlickrFetch().downloadGalleryItems();
         }
 
         @Override
         protected void onPostExecute(List<GalleryItem>items){
+          //  hideProgressBar();
+            mItems = items;
+           // mItems.addAll(items);
+            //setupAdapter();
+
          pageFetched++;
          asyncFetching=false;
-         mItems.addAll(items);
          GalleryPage pge = GalleryPage.getGalleryPage();
          mMaxPage = pge.getTotalPages();
          mItemsPerPage = pge.getItemPerPage();
 
-         if(mPhotoRecyclerView.getAdapter()==null)setupAdapter();
+       //  if(mPhotoRecyclerView.getAdapter()==null)
+             setupAdapter();
+
          mPhotoRecyclerView.getAdapter().notifyDataSetChanged();
+
             updatePageText(mGridManager.findFirstVisibleItemPosition());
         }
     }

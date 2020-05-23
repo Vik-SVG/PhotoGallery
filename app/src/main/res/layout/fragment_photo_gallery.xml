@@ -5,7 +5,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    tools:context=".PhotoGalleryActivity">
 
 <androidx.recyclerview.widget.RecyclerView
     android:id="@+id/photo_recycler_view"
@@ -15,6 +16,7 @@
     app:layout_constraintBottom_toTopOf="@+id/currentPageText"
     app:layout_constraintTop_toTopOf="parent"
     tools:context="com.bignerdranch.photogallery.PhotoGalleryActivity">
+
 </androidx.recyclerview.widget.RecyclerView>
 
     <TextView
@@ -29,4 +31,15 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/photo_recycler_view" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    <ProgressBar
+        android:id="@+id/progres_bar"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:max="100"
+        app:layout_constraintBottom_toBottomOf="@+id/photo_recycler_view"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
