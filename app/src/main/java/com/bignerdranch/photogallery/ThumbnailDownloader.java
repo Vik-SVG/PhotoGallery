@@ -36,7 +36,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
         super(TAG);
         mResponseHandler = responseHandler;
 
-        mPhotoCache = new LruCache<>(76); //added
+    //    mPhotoCache = new LruCache<>(76); //added
     }
 
     @Override
@@ -75,9 +75,9 @@ public class ThumbnailDownloader<T> extends HandlerThread {
         mRequestMap.clear();
     }
 
-    public void clearCache(){ //added
-        mPhotoCache.evictAll();
-    }
+  // public void clearCache(){ //added
+   //    mPhotoCache.evictAll();
+   // }
 
     private void handleRequest(final T target){
         try{
@@ -90,7 +90,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
             byte[] bitmapBytes = new FlickrFetch().getUrlBytes(url);
             final Bitmap bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0,bitmapBytes.length);
 
-            mPhotoCache.put(url, bitmap); //added
+         //   mPhotoCache.put(url, bitmap); //added
 
             Log.i(TAG, "Bitmap of size "+ bitmapBytes.length/1024+"KB created");
 

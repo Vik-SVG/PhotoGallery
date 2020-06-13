@@ -30,7 +30,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PhotoGalleryFragment extends Fragment{
+public class PhotoGalleryFragment extends VisibleFragment{
 
     private static final String TAG = "PhotoGalleryFragment";
     private RecyclerView mPhotoRecyclerView;
@@ -43,7 +43,7 @@ public class PhotoGalleryFragment extends Fragment{
     int     mMaxPage        = 1;
     int     mItemsPerPage   = 1;
     int     mFirstItemPosition, mLastItemPosition;
-    private ThumbnailDownloader<Integer> mThumbnailDownloader;
+    private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
     ProgressBar mProgressBar;
 
    /* private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>>{
@@ -78,12 +78,12 @@ public class PhotoGalleryFragment extends Fragment{
         Handler responseHandler = new Handler();
         mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
         mThumbnailDownloader.setThumbnailDownloadListener(
-                new ThumbnailDownloader.ThumbnailDownloadListener<Integer>() { //chanched to Integer
+                new ThumbnailDownloader.ThumbnailDownloadListener<PhotoHolder>() { //chanched to Integer
                     @Override
-                    public void onThumbnailDownloaded(Integer position, Bitmap bitmap) {
-                       // Drawable drawable = new BitmapDrawable(getResources(), bitmap);
-                      //  photoHolder.bindDrawable(drawable);
-                        mPhotoRecyclerView.getAdapter().notifyItemChanged(position);
+                    public void onThumbnailDownloaded(PhotoHolder photoHolder, Bitmap bitmap) {
+                       Drawable drawable = new BitmapDrawable(getResources(), bitmap);
+                        photoHolder.bindDrawable(drawable);
+                   //     mPhotoRecyclerView.getAdapter().notifyItemChanged(position);
 
                     }
                 }
@@ -123,7 +123,7 @@ public class PhotoGalleryFragment extends Fragment{
                 int lastVisibleItem = mGridManager.findLastVisibleItemPosition();
                 int firstVisibleItem = mGridManager.findFirstVisibleItemPosition();
 
-                if (mLastItemPosition != lastVisibleItem || mFirstItemPosition != firstVisibleItem) {
+              /*  if (mLastItemPosition != lastVisibleItem || mFirstItemPosition != firstVisibleItem) {
                     Log.d(TAG,"Showing item " + firstVisibleItem +" to " + lastVisibleItem);
                     updatePageText(firstVisibleItem);
 
@@ -133,13 +133,13 @@ public class PhotoGalleryFragment extends Fragment{
                     int end   = Math.min(lastVisibleItem +10,mItems.size()-1);
                     for (int position = begin; position <= end; position++){
                         String url=mItems.get(position).getUrl();
-                       if(mThumbnailDownloader.mPhotoCache.get(url)== null) {
+                    //   if(mThumbnailDownloader.mPhotoCache.get(url)== null) {
                             Log.d(TAG,"Requesting Download at position: "+ position);
                             mThumbnailDownloader.queueThumbnail(position,url);
-                        }
+                     //   }
 
                     }
-                }
+                }*/
 
                 Log.d(TAG, "Scrolling, First Item: "+ firstVisibleItem + " Last item: " + lastVisibleItem);
 
@@ -161,7 +161,7 @@ public class PhotoGalleryFragment extends Fragment{
     public void onDestroyView(){
         super.onDestroyView();
         mThumbnailDownloader.clearQueue();
-        mThumbnailDownloader.clearCache();
+       // mThumbnailDownloader.clearCache();
     }
 
     private void showProgressBar() {
@@ -255,17 +255,33 @@ public class PhotoGalleryFragment extends Fragment{
         }
     }
 
-    private class PhotoHolder extends RecyclerView.ViewHolder{
+    private class PhotoHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
         private  ImageView mItemImageView;
+        private GalleryItem mGalleryItem;
 
         public PhotoHolder(View itemView){
             super(itemView);
 
             mItemImageView = (ImageView) itemView.findViewById(R.id.item_image_view);
+
+            itemView.setOnClickListener(this);
         }
 
         public void bindDrawable (Drawable drawable){
         mItemImageView.setImageDrawable(drawable); }
+
+
+        public void bindGalleryItem(GalleryItem galleryItem){
+            mGalleryItem = galleryItem;
+        }
+
+        @Override
+        public void onClick(View v) {
+           // Intent i = new Intent(Intent.ACTION_VIEW, mGalleryItem.getPhotoPageUri());
+           Intent i = PhotoPageActivity
+           .newIntent(getActivity(), mGalleryItem.getPhotoPageUri());
+            startActivity(i);
+        }
     }
 
     private class PhotoAdapter extends RecyclerView.Adapter<PhotoHolder>{
@@ -290,18 +306,25 @@ return new PhotoHolder(view);
         public void onBindViewHolder(@NonNull PhotoHolder photoHolder, int position) {
             Log.d(TAG,"Binding item "+ position + " to " + photoHolder.hashCode());
             GalleryItem galleryItem = mGalleryItems.get(position);
-            String url = galleryItem.getUrl();
-            Bitmap bitmap = mThumbnailDownloader.mPhotoCache.get(url);
-           if(bitmap == null) {
-            showProgressBar();
+            photoHolder.bindGalleryItem(galleryItem);
+
+
+       //    Bitmap bitmap = mThumbnailDownloader.mPhotoCache.get(url);
+      //     if(bitmap == null) {
+            //  showProgressBar();
                 Drawable placeholder = getResources().getDrawable(R.drawable.ic_launcher_background);
-                photoHolder.bindDrawable(placeholder);
-                mThumbnailDownloader.queueThumbnail(position,url);
-            }else {
-                hideProgressBar();
-                Drawable drawable = new BitmapDrawable(getResources(), bitmap);
-                photoHolder.bindDrawable(drawable);
-            }
+            photoHolder.bindDrawable(placeholder);
+
+
+                mThumbnailDownloader.queueThumbnail(photoHolder,galleryItem.getUrl());
+
+
+            //  }else {
+            //    hideProgressBar();
+             //   Drawable drawable = new BitmapDrawable(getResources(), bitmap);
+               // photoHolder.bindDrawable(drawable);
+           // }
+
 
            // GalleryItem galleryItem = mGalleryItems.get(position);
            // Drawable placeholder = getResources().getDrawable(R.drawable.ic_launcher_background);
